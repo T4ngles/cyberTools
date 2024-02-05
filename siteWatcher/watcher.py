@@ -72,17 +72,23 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
         soup = BeautifulSoup(content, 'lxml')
         links = []
         for link in soup.find_all('a', href=True):
-            if "https://" in link['href'] or "http://" in link['href'] :
-                newLink = link['href']
-            else:                
-                newLink = siteDomain + link['href']
+            try:
+                if ("https://" in link['href'] or "http://" in link['href']) and link['href'][-5:] == '.html':
+                    newLink = link['href']
+
+                    if newLink in linkSet:
+                        pass
+                    else:
+                        linkSet.add(newLink)
+                        links.append(newLink)
+                        print(" "*4, newLink)
+
+                else:                
+                    pass #newLink = siteDomain + link['href']
+            except TypeError as e:
+                print(link,f"has error of {e}")
             
-            if newLink in linkSet:
-                pass
-            else:
-                linkSet.add(newLink)
-                links.append(newLink)
-                print(" "*4, newLink)
+            
 
         print(f"Round {roundTag}: linkset size is {len(linkSet)}")
         return links
