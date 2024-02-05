@@ -13,6 +13,7 @@
 """
 
 import os
+import csv
 
 from bs4 import BeautifulSoup
 import urllib.request
@@ -95,7 +96,70 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
     
     except HTTPError or URLError as e:
         print(e,urlToSearch)
+
+def findTableData(urlToSearch: str):
+    try:
+        content = readURL(urlToSearch)
+        soup = BeautifulSoup(content, 'lxml')
+
+        #racquet dict
+        racquetDict = {}
+        #is racquet page
+
+
+        #is not racquet page
+
+        racquetName = soup.find('title').text[:-14]
+        print(racquetName)
+        racquetDict["racquetName"] = racquetName
+
+        try:
+            racquetPrice = soup.find('div', {"class": "desc_top gtm_detail"})['data-gtm_detail_price']
+            racquetDict["racquetPrice"] = racquetPrice
+            
+            #find specs table
+            for productSpecsTable in soup.find_all('div', {'id': 'product_specs'}):
+                
+                #go through spec rows
+                for row in productSpecsTable.find_all('tr'):
+                    
+                    #pull out spec keys and values
+                    try:
+                        #use strong tags to find heading
+                        rowKey = row.find('strong').text.strip(":")
+                        if rowKey == "String Pattern":
+                            continue
+                        rowValue = row.find('strong').next_sibling.text.strip()
+                        if rowValue == "":  #sometimes <span> tag is placed to space out values this checks and skips the span value
+                            rowValue = row.find('strong').next_sibling.next_sibling.text.strip()
+
+                        racquetDict[rowKey] = rowValue
+                    except AttributeError as e:
+                        #sometimes strong tag is not used instead bold is used so next_element method is used as fallback
+                        print(f"error finding strong {e}")
+                        try:
+                            rowKey = row.next_element.text.strip(":")
+                            if rowKey == "String Pattern":
+                                continue
+                            rowValue = row.next_element.next_sibling.text.strip()
+                            racquetDict[rowKey] = rowValue
+                        except AttributeError as e:
+                            print("no strong and cannot use next element and sibling")
+                            pass
+
+                        
+
+            print(f"Racquet specs for {racquetName} found")
+            print(racquetDict)
+            return racquetDict
         
+        except TypeError as e:
+            print(f'not racquet page? {e}')
+            return None
+    
+    except HTTPError or URLError as e:
+        print(e,urlToSearch)
+        return None
 
 def checkLastModified():
     print("#"*20)
@@ -103,6 +167,7 @@ def checkLastModified():
     
     #function this
     url = "https://au.wilson.com"
+    url = "https://www.tennisonly.com.au"
     sitemapURL = url + "/sitemap.xml"
     content = readURL(sitemapURL)
     
@@ -142,7 +207,68 @@ def checkLastModified():
 
 if __name__ == '__main__':
     
-    watcher = checkLastModified() 
+    #watcher = checkLastModified() 
+    domain = "https://www.tennisonly.com.au"
+    pagesToCrawl = [
+        "https://www.tennisonly.com.au/Wilson_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Babolat_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Head_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Prince_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Yonex_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Volkl_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Dunlop_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Gamma_Tennis_Racquets.html",
+        "https://www.tennisonly.com.au/Solinco_Tennis_Racquets/catpage-STR.html",
+        "https://www.tennisonly.com.au/Tecnifibre_Tennis_Racquets.html",
+    ]
+    
+    masterLinkSet = set()
 
-    webCrawl()
+    for page in pagesToCrawl:
+        masterLinkSet.update(webCrawl(page,domain))
+
+    masterRacquetDict = {}
+
+    for link in masterLinkSet:
+
+        racquetDict = findTableData(link)
+
+        if racquetDict:        
+            masterRacquetDict[racquetDict['racquetName']] = racquetDict
+        
+        #findTableData("https://www.tennisonly.com.au/Prince_Phantom_100G/descpage-PTXP1G.html")
+    
+    racquetListName = 'Tennis Only Racquets.csv'
+
+    fieldnames = ['racquetName',
+                  'racquetPrice',
+                  'Head Size',
+                  'Length',
+                  'Strung Weight',
+                  'Balance',
+                  'Swingweight',
+                  'Stiffness',
+                  'Beam Width',
+                  'Composition',
+                  'Power Level',
+                  'Stroke Style',
+                  'Swing Speed',
+                  'Racquet Colors',
+                  'Grip Type',
+                  'String Pattern',
+                  'String Tension'
+                  ]
+
+    with open(racquetListName, 'w', encoding='utf-8', newline='') as csvfile:
+        
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        
+        print("Racquet Table")
+
+        for racquet in masterRacquetDict.values():
+            
+            print(racquet["racquetName"] + "    " + racquet["racquetPrice"])
+            writer.writerow(racquet)
+
 
