@@ -32,20 +32,21 @@ def debugPrint(*args):
             output.append(arg)	
         print(output)
 
-def webCrawl():
+def webCrawl(urlToCrawl: str, domainBound: str):
     #create dictionary of web links and if visited and visit time.
-        
-    url = "https://au.wilson.com"
-    domain = "https://au.wilson.com"
+
+    #urlToCrawl = "https://www.tennisonly.com.au/Wilson_Tennis_Racquets.html"
+    #domainBound = "https://www.tennisonly.com.au"
     
     linkSet = set()
 
-    foundLinks = findLinks(url, linkSet, "1", domain)
+    foundLinks = findLinks(urlToCrawl, linkSet, "1", domainBound)
     
     for link in foundLinks:
-        newLinks = findLinks(link, linkSet, "2", domain)
+        newLinks = findLinks(link, linkSet, "2", domainBound)
         
     print(linkSet)
+    return linkSet
 
 
     #take in domain and parse sitemap.xml for more xml's and urls of weblinks and their lastModified date
