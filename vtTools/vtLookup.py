@@ -58,11 +58,11 @@ def findVTRating(filehash: str):
     # print(f"File has rating of {vtRating}")
 
     session = requests.Session()
-    session.headers = {'X-Apikey': '<api-key>'}
+    session.headers = {'X-Apikey': 'ee6eb1d14a45a36485d67bc5e16c20273b4b1b91bc6b9c5ad6326a83b20fcb40'}
 
     sha256Hash = filehash
 
-    url = f"https://www.virustotal.com/api/v3/monitor_partner/hashes/{sha256Hash}/analyses"
+    url = f"https://www.virustotal.com/api/v3/files/{sha256Hash}"
     response = session.get(url)
     print(response.text)
     return
