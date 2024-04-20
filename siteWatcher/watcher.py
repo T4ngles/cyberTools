@@ -33,7 +33,7 @@ def debugPrint(*args):
             output.append(arg)	
         print(output)
 
-def webCrawl(urlToCrawl: str, domainBound: str):
+def webCrawl(urlToCrawl: str, domain: str):
     #create dictionary of web links and if visited and visit time.
 
     #urlToCrawl = "https://www.tennisonly.com.au/Wilson_Tennis_Racquets.html"
@@ -41,10 +41,16 @@ def webCrawl(urlToCrawl: str, domainBound: str):
     
     linkSet = set()
 
-    foundLinks = findLinks(urlToCrawl, linkSet, "1", domainBound)
+    method = urlToCrawl.split("//")[0]
+
+    rootPage = method+"//"+domain
+
+    domain = page.split("//")[1].split("/")[0]
+
+    foundLinks = findLinks(urlToCrawl, linkSet, "1", rootPage)
     
     for link in foundLinks:
-        newLinks = findLinks(link, linkSet, "2", domainBound)
+        newLinks = findLinks(link, linkSet, "2", rootPage)
     
     return linkSet
 
@@ -52,19 +58,16 @@ def webCrawl(urlToCrawl: str, domainBound: str):
     #take in domain and parse sitemap.xml for more xml's and urls of weblinks and their lastModified date
 
 def readURL(urlToRead: str):
-    if urlToRead == "https://wdt.wilson.com/":
-        pass
-    else:
-        url = urlToRead
-        print('url page:' + url)
-        req = Request(
-            url, 
-            headers={'User-Agent': 'Mozilla/5.0'}
-        )
-        content = urlopen(req).read()
-        return content
+    url = urlToRead
+    print('url page:' + url)
+    req = Request(
+        url, 
+        headers={'User-Agent': 'Mozilla/5.0'}
+    )
+    content = urlopen(req).read()
+    return content
 
-        #content = urllib.request.urlopen(url).read()
+    #content = urllib.request.urlopen(url).read()
 
 def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
     try:
@@ -88,8 +91,10 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
                     debugPrint(f".html found but no http in {link['href']}")
                     if link['href'][0] == "/":            
                         newLink = siteDomain + link['href']
-                    elif "../" in link['href'][0]:
-                        newLink = urlToSearch + link['href']
+                    elif "../" in link['href']:
+                        print(link['href'])
+                        print(urlToSearch.rsplit("/",1) + "/")
+                        newLink = urlToSearch.rsplit("/",1) + "/" + link['href']
                     else:
                         newLink = siteDomain + "/" + link['href']
 
@@ -294,15 +299,27 @@ if __name__ == '__main__':
     #     "https://www.tennisonly.com.au/Tecnifibre_Tennis_Racquets.html",
     # ]
 
-    domain = "https://patrickrothfuss.com"
-    pagesToCrawl = [
-        "https://patrickrothfuss.com"
-    ]
-    
-    masterLinkSet = set()
+    # domain = "https://patrickrothfuss.com"
+    # pagesToCrawl = [
+    #     "https://patrickrothfuss.com"
+    # ]
 
-    for page in pagesToCrawl:
-        masterLinkSet.update(webCrawl(page,domain))
+    # masterLinkSet = set()
+
+    # for page in pagesToCrawl:
+    #     masterLinkSet.update(webCrawl(page,domain))
+
+    # for item in masterLinkSet:
+    #     print(item)
+
+    # #getRacquetData(masterLinkSet)
+
+    page = input("Enter in page to crawl")
+    domain = page.split("//")[1].split("/")[0]
+
+    print(f"Page to crawl {page} in domain {domain}")
+    
+    masterLinkSet = webCrawl(page,domain)
 
     for item in masterLinkSet:
         print(item)
