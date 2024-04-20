@@ -84,8 +84,23 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
                         links.append(newLink)
                         print(" "*4, newLink)
 
-                else:                
-                    pass #newLink = siteDomain + link['href']
+                elif link['href'][-5:] == '.html':
+                    debugPrint(f".html found but no http in {link['href']}")
+                    if link['href'][0] == "/":            
+                        newLink = siteDomain + link['href']
+                    elif "../" in link['href'][0]:
+                        newLink = urlToSearch + link['href']
+                    else:
+                        newLink = siteDomain + "/" + link['href']
+
+                    if newLink in linkSet:
+                        pass
+                    else:
+                        linkSet.add(newLink)
+                        links.append(newLink)
+                        print(" "*4, newLink)
+                else:
+                    pass
             except TypeError as e:
                 print(link,f"has error of {e}")
             
