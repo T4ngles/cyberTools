@@ -45,8 +45,7 @@ def webCrawl(urlToCrawl: str, domainBound: str):
     
     for link in foundLinks:
         newLinks = findLinks(link, linkSet, "2", domainBound)
-        
-    print(linkSet)
+    
     return linkSet
 
 
@@ -73,10 +72,11 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
         soup = BeautifulSoup(content, 'lxml')
         links = []
         for link in soup.find_all('a', href=True):
+            debugPrint(f"checking link {link}")
             try:
                 if ("https://" in link['href'] or "http://" in link['href']) and link['href'][-5:] == '.html':
                     newLink = link['href']
-
+                    #need to refactor and functionise these checks
                     if newLink in linkSet:
                         pass
                     else:
@@ -96,6 +96,60 @@ def findLinks(urlToSearch: str, linkSet: set, roundTag: str, siteDomain: str):
     
     except HTTPError or URLError as e:
         print(e,urlToSearch)
+
+
+def checkLastModified(url):
+    print("#"*20)
+    print("Check started at:" + str(datetime.now().time()))
+    
+    #function this
+    #url = "https://au.wilson.com"
+    #url = "https://www.tennisonly.com.au"
+    sitemapURL = url + "/sitemap.xml"
+    content = readURL(sitemapURL)
+    
+    xmlSoup = BeautifulSoup(content, 'xml') #xml is the default xml parser can check for new ones
+        
+    siteXMLs = []
+    pageDictionary = {}
+    
+    for xmlURL in xmlSoup.find_all('loc'):
+        siteXMLs.append(xmlURL.get_text())
+                
+    debugPrint(siteXMLs)
+
+    for xmlURL in siteXMLs:
+        debugPrint(xmlURL)
+        #try here to catch 404's
+        if "http" == xmlURL[0:4]:
+            debugPrint("is a direct link")
+        else:
+            xmlURL = url+xmlURL
+            debugPrint(f"is a relative link. Changing item to: {xmlURL}")
+        try:
+            content = urllib.request.urlopen(xmlURL).read()
+            urlSoup = BeautifulSoup(content, 'xml')
+            for page in urlSoup.find_all('url'):
+                pageUrl = page.find('loc').text #url should search for these tags specifically
+                lastmodFind = page.find('lastmod')
+                if lastmodFind:
+                    pageLastMod = lastmodFind.text #lastmod
+                imageFind = page.find('image:image')
+                if imageFind:
+                    imageFindLoc = imageFind.find('image:loc').text #image location
+                else:
+                    imageFindLoc = ""
+                #pageChangeFreq = page.get_text().split('\n')[3] #changefreq
+                if lastmodFind:
+                    pageDictionary[pageLastMod] = (pageUrl,imageFindLoc)
+        except HTTPError as e:
+            print(f"{e}")
+            
+    print(10*"-","Summary",10*"-")
+    print(pageDictionary.items())
+    recentPages = sorted(pageDictionary.items(), reverse=True)
+    for x in range(10):
+        print(recentPages[x])
 
 def findTableData(urlToSearch: str):
     try:
@@ -161,72 +215,7 @@ def findTableData(urlToSearch: str):
         print(e,urlToSearch)
         return None
 
-def checkLastModified():
-    print("#"*20)
-    print("Check started at:" + str(datetime.now().time()))
-    
-    #function this
-    url = "https://au.wilson.com"
-    url = "https://www.tennisonly.com.au"
-    sitemapURL = url + "/sitemap.xml"
-    content = readURL(sitemapURL)
-    
-    xmlSoup = BeautifulSoup(content, 'xml') #xml is the default xml parser can check for new ones
-        
-    siteXMLs = []
-    pageDictionary = {}
-    
-    for xmlURL in xmlSoup.find_all('loc'):
-        siteXMLs.append(xmlURL.get_text())
-                
-    debugPrint(siteXMLs)
-
-    for xmlURL in siteXMLs:
-        content = urllib.request.urlopen(xmlURL).read()
-        urlSoup = BeautifulSoup(content, 'xml')
-        for page in urlSoup.find_all('url'):
-            pageUrl = page.find('loc').text #url should search for these tags specifically
-            lastmodFind = page.find('lastmod')
-            if lastmodFind:
-                pageLastMod = lastmodFind.text #lastmod
-            imageFind = page.find('image:image')
-            if imageFind:
-                imageFindLoc = imageFind.find('image:loc').text #image location
-            else:
-                imageFindLoc = ""
-            #pageChangeFreq = page.get_text().split('\n')[3] #changefreq
-            if lastmodFind:
-                pageDictionary[pageLastMod] = (pageUrl,imageFindLoc)
-            
-    print(10*"-","Summary",10*"-")
-    recentPages = sorted(pageDictionary.items(), reverse=True)
-    for x in range(10):
-        print(recentPages[x])
-        
-#=========MAIN Function=============
-
-if __name__ == '__main__':
-    
-    #watcher = checkLastModified() 
-    domain = "https://www.tennisonly.com.au"
-    pagesToCrawl = [
-        "https://www.tennisonly.com.au/Wilson_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Babolat_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Head_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Prince_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Yonex_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Volkl_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Dunlop_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Gamma_Tennis_Racquets.html",
-        "https://www.tennisonly.com.au/Solinco_Tennis_Racquets/catpage-STR.html",
-        "https://www.tennisonly.com.au/Tecnifibre_Tennis_Racquets.html",
-    ]
-    
-    masterLinkSet = set()
-
-    for page in pagesToCrawl:
-        masterLinkSet.update(webCrawl(page,domain))
-
+def getRacquetData(masterLinkSet):
     masterRacquetDict = {}
 
     for link in masterLinkSet:
@@ -270,5 +259,40 @@ if __name__ == '__main__':
             
             print(racquet["racquetName"] + "    " + racquet["racquetPrice"])
             writer.writerow(racquet)
+        
+#=========MAIN Function=============
+
+if __name__ == '__main__':
+    
+    #watcher = checkLastModified("https://au.wilson.com") #https://au.wilson.com #https://www.tennisonly.com.au
+    # domain = "https://www.tennisonly.com.au"
+    # pagesToCrawl = [
+    #     "https://www.tennisonly.com.au/Wilson_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Babolat_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Head_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Prince_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Yonex_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Volkl_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Dunlop_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Gamma_Tennis_Racquets.html",
+    #     "https://www.tennisonly.com.au/Solinco_Tennis_Racquets/catpage-STR.html",
+    #     "https://www.tennisonly.com.au/Tecnifibre_Tennis_Racquets.html",
+    # ]
+
+    domain = "https://patrickrothfuss.com"
+    pagesToCrawl = [
+        "https://patrickrothfuss.com"
+    ]
+    
+    masterLinkSet = set()
+
+    for page in pagesToCrawl:
+        masterLinkSet.update(webCrawl(page,domain))
+
+    for item in masterLinkSet:
+        print(item)
+
+    #getRacquetData(masterLinkSet)
+    
 
 
